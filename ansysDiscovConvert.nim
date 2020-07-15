@@ -60,11 +60,11 @@ proc writeNLIST(nodes: seq[Node], outpath: string) =
   # TODO: find out if it matters whether there is more / less space than the
   # weird `NLIST.lis` (3, 4, 9, 9) spaces...
   let tabHeader = ["NODE", "X", "Y", "Z"].mapIt(it.align(20)).join()
-  template writeTab(f, n, num: untyped): untyped =
+  template writeTab(f, nIdx, n, num: untyped): untyped =
     f.write("\n")
     f.write(tabHeader & "\n")
     for idx in 0 ..< num:
-      f.write($n[idx] & "\n")
+      f.write($n[nIdx + idx] & "\n")
 
   var f = open(outpath / "NLIST.lis", fmWrite)
   f.write(header & "\n")
@@ -72,10 +72,10 @@ proc writeNLIST(nodes: seq[Node], outpath: string) =
     nFull = nodes.len div numPerTab
     nRest = nodes.len mod numPerTab
   for i in 0 ..< nFull:
-    writeTab(f, nodes, numPerTab)
+    writeTab(f, i * numPerTab, nodes, numPerTab)
   # write the remaining
   if nRest > 0:
-    writeTab(f, nodes, nRest)
+    writeTab(f, nodes.high - nRest, nodes, nRest)
 
 proc main(path: string, outpath = ".") =
   var nodes = parseNodes(path)
