@@ -61,7 +61,7 @@ proc writeNLIST(nodes: seq[Node], outpath: string) =
   # weird `NLIST.lis` (3, 4, 9, 9) spaces...
   let tabHeader = ["NODE", "X", "Y", "Z"].mapIt(it.align(20)).join()
   template writeTab(f, n, num: untyped): untyped =
-    f.write("\n\n")
+    f.write("\n")
     f.write(tabHeader & "\n")
     for idx in 0 ..< num:
       f.write($n[idx] & "\n")
