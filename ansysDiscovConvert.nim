@@ -77,6 +77,8 @@ proc writeNLIST(nodes: seq[Node], outpath: string) =
   if nRest > 0:
     writeTab(f, nodes.high - nRest, nodes, nRest)
 
+  f.close()
+
 proc main(path: string, outpath = ".") =
   var nodes = parseNodes(path)
   echo "parsing of ", nodes.len, " nodes done"
