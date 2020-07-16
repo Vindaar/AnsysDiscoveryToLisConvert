@@ -1,4 +1,4 @@
-import strscans, strutils, streams, os, sequtils, algorithm
+import strscans, strutils, streams, os, sequtils, algorithm, parseutils
 import cligen
 
 ## The node information by default should be contained in the
@@ -12,6 +12,7 @@ type
 
   Element = object
     id: int
+    matId: int # ID of the materiel this element uses
     nodeIds: seq[int] # only need ids
     # an element has a bunch more properties, but we don't need those as far as
     # I'm concerned
@@ -33,9 +34,10 @@ func `$`(n: Node): string =
 
 func `<`(n, m: Node): bool = n.id < m.id
 
-template check(f, buf, str: untyped): untyped =
-  doAssert f.readLine(buf)
-  doAssert buf.startsWith(str)
+template check(f, buf, str: untyped, toRead: static bool = true): untyped =
+  when toRead:
+    doAssert f.readLine(buf)
+  doAssert buf.startsWith(str), " line was: " & buf
 
 proc parseNodes(f: FileStream): seq[Node] =
   const blkStr = "nblock,$i,,$i"
@@ -61,11 +63,75 @@ proc parseNodes(f: FileStream): seq[Node] =
     result[idx] = Node(id: nId, pos: (x: x, y: y, z: z))
     inc idx
   # end of node <-> pos mapping
-  check(f, buf, "-1")
+  check(f, buf, "-1", toRead = false)
   check(f, buf, "/wb,node,end")
+
+proc parseElement(f: FileStream, buf: var string, id: int): Element =
+  ## `id` is only given for cross check in debug mode
+  var
+    idx: int # idx within line, i.e. column idx
+    num: int # current parsed number
+    nNodes: int # number of nodes this element has
+    i: int # number of parsed numbers
+    nIdx: int # number of parsed nodes
+  while idx < buf.len:
+    idx += skipWhitespace(buf, start = idx)
+    case i
+    of 0:
+      idx += parseInt(buf, num, start = idx)
+      result.matId = num
+    of 1:
+      idx += parseInt(buf, num, start = idx)
+      assert id == num, "expected id = " & $id & " but got num = " & $num
+    of 2 .. 7, 9:
+      idx += skipUntil(buf, ' ', start = idx)
+    of 8:
+      idx += parseInt(buf, num, start = idx)
+      nNodes = num
+      result.nodeIds = newSeq[int](num)
+    of 10:
+      idx += parseInt(buf, num, start = idx)
+      result.id = num
+    else:
+      idx += parseInt(buf, num, start = idx)
+      result.nodeIds[nIdx] = num
+      inc nIdx
+    inc i
+  if nNodes > 8:
+    # read next line as well
+    idx = 0
+    doAssert f.readLine(buf)
+    while idx < buf.len:
+      idx += skipWhitespace(buf, start = idx)
+      idx += parseInt(buf, num, start = idx)
+      result.nodeIds[nIdx] = num
+      inc nIdx
+
+proc parseElementGroup(f: FileStream, buf: var string): ElementGroup =
+  const elementHeader = "/com,*********** Element Group$s$i"
+  if not buf.scanf(elementHeader, result.num):
+    raise newException(IOError, "Not a valid mesh file! `Element` header could " &
+      "not be matched. Line was: " & buf)
+  check(f, buf, "eblock,19,solid") # understand and parse!
+  check(f, buf, "(19i8)") # understand and parse!
+  var
+    elements = newSeqOfCap[Element](100_000) # start reasonably big
+  while f.readLine(buf) and not buf.startsWith("-1"):
+    elements.add parseElement(f, buf, result.num)
+  result.elements = elements
+
+proc parseElementGroups(f: FileStream): seq[ElementGroup] =
+  var buf: string
+  check(f, buf, "/wb,elem,start")
+  while f.readLine(buf) and not buf.startsWith("/wb,elem,end"):
+    # we have no clue about how many elements a group contains afaiu
+    result.add parseElementGroup(f, buf)
+
 proc parseMeshFile(path: string): MeshFile =
   var f = newFileStream(path / defaultNodeFile)
+  doAssert not f.isNil
   result.nodes = parseNodes f
+  result.groups = parseElementGroups f
   f.close()
 
 proc writeNLIST(nodes: seq[Node], outpath: string) =
@@ -99,10 +165,10 @@ proc writeNLIST(nodes: seq[Node], outpath: string) =
   f.close()
 
 proc main(path: string, outpath = ".") =
-  var nodes = parseNodes(path)
-  echo "parsing of ", nodes.len, " nodes done"
-  nodes.sort() # sort by id
-  writeNLIST(nodes, outpath)
+  var mesh = parseMeshFile(path)
+  echo "parsing of ", mesh.nodes.len, " nodes done"
+  mesh.nodes.sort() # sort by id
+  writeNLIST(mesh.nodes, outpath)
 
 
 when isMainModule:
