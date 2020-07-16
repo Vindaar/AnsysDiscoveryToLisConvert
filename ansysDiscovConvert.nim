@@ -10,6 +10,20 @@ type
     id: int
     pos: tuple[x, y, z: float]
 
+  Element = object
+    id: int
+    nodeIds: seq[int] # only need ids
+    # an element has a bunch more properties, but we don't need those as far as
+    # I'm concerned
+
+  ElementGroup = object
+    num: int
+    elements: seq[Element]
+
+  MeshFile = object
+    nodes: seq[Node]
+    groups: seq[ElementGroup]
+
 func `$`(n: Node): string =
   result = newStringOfCap(80)
   result.add align($n.id, 20)
@@ -19,25 +33,24 @@ func `$`(n: Node): string =
 
 func `<`(n, m: Node): bool = n.id < m.id
 
-proc parseNodes(path: string): seq[Node] =
+template check(f, buf, str: untyped): untyped =
+  doAssert f.readLine(buf)
+  doAssert buf.startsWith(str)
+
+proc parseNodes(f: FileStream): seq[Node] =
   const blkStr = "nblock,$i,,$i"
   const nodeLine = "$s$i$s$f$s$f$s$f"
-
-  var f = newFileStream(path / defaultNodeFile)
   var buf: string
   # parse mesh file header manually
-  doAssert f.readLine(buf)
-  assert buf.startsWith("/com")
-  doAssert f.readLine(buf)
-  assert buf.startsWith("/wb")
+  check(f, buf, "/com")
+  check(f, buf, "/wb")
   doAssert f.readLine(buf)
   var
     nBlk, nNodes: int
   if not buf.scanf(blkStr, nBlk, nNodes):
     raise newException(IOError, "Not a valid mesh file! `nblock` header could " &
       "not be matched.")
-  doAssert f.readLine(buf)
-  assert buf.startsWith("(")
+  check(f, buf, "(")
   var
     idx = 0
     nId = 0
@@ -47,6 +60,12 @@ proc parseNodes(path: string): seq[Node] =
     doAssert buf.scanf(nodeLine, nId, x, y, z)
     result[idx] = Node(id: nId, pos: (x: x, y: y, z: z))
     inc idx
+  # end of node <-> pos mapping
+  check(f, buf, "-1")
+  check(f, buf, "/wb,node,end")
+proc parseMeshFile(path: string): MeshFile =
+  var f = newFileStream(path / defaultNodeFile)
+  result.nodes = parseNodes f
   f.close()
 
 proc writeNLIST(nodes: seq[Node], outpath: string) =
