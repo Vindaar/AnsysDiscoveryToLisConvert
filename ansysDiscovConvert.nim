@@ -35,7 +35,7 @@ func `$`(n: Node): string =
   result.add align(formatFloat(n.pos.y, precision = 11), 20)
   result.add align(formatFloat(n.pos.z, precision = 11), 20)
 
-template toStr(n: Node): string = $n
+func toStr(n: Node): string = $n
 
 func voltStr(n: Node): string =
   result = &"{n.id:>8}{n.volt:>9.2f}"
@@ -192,30 +192,26 @@ proc parsePotentialFile(path: string, nodes: var seq[Node]) =
     inc idx
   f.close()
 
-proc writeTab[T](f: File, n: seq[T], nIdx: int, num: int,
-                 tabHeader: string,
-                 print: (proc(x: T): string)) =
-  ## should be a local proc in `writeListFile`, but crashes the compiler with
-  ## an intenal error :(
-  f.write("\n")
-  f.write(tabHeader & "\n")
-  for idx in 0 ..< num:
-    f.write(print(n[nIdx + idx]) & "\n")
-
 proc writeListFile[T](args: seq[T], outfile: string,
                       numPerTab: int,
                       header, tabHeader: string,
                       print: (proc(x: T): string)) =
+  template writeTab(f: File, n, nIdx, num: untyped): untyped =
+    f.write("\n")
+    f.write(tabHeader & "\n")
+    for idx in 0 ..< num:
+      f.write(print(n[nIdx + idx]) & "\n")
+
   var f = open(outfile, fmWrite)
   f.write(header & "\n")
   let
     nFull = args.len div numPerTab
     nRest = args.len mod numPerTab
   for i in 0 ..< nFull:
-    writeTab(f, args, i * numPerTab, numPerTab, tabHeader, print)
+    writeTab(f, args, i * numPerTab, numPerTab)
   # write the remaining
   if nRest > 0:
-    writeTab(f, args, args.high - nRest, nRest, tabHeader, print)
+    writeTab(f, args, args.high - nRest, nRest)
 
   f.close()
 
