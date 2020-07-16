@@ -13,3 +13,62 @@ And it will generate:
 - NLIST.lis: mapping of nodes to coordinates
 - MPLIST.lis: list of used materials
 - PRNSOL.lis: simulation result mapping nodes to electric field
+
+
+** References
+
+List of different acronyms used in MPLIST to describe materials:
+- https://www.mm.bme.hu/~gyebro/files/ans_help_v182/ans_cmd/Hlp_C_MP.html
+
+| Acronym | Meaning                                                                                                                                                                                              |
+|---------+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| ALPD    | Mass matrix multiplier for damping.                                                                                                                                                                  |
+| ALPX    | Secant coefficients of thermal expansion (also ALPY, ALPZ).                                                                                                                                          |
+| BETD    | Stiffness matrix multiplier for damping. *                                                                                                                                                           |
+| BETX    | Coefficient of diffusion expansion (also BETY, BETZ)                                                                                                                                                 |
+| BVIS    | Bulk viscosity                                                                                                                                                                                       |
+| C       | Specific heat                                                                                                                                                                                        |
+| CREF    | Reference concentration (may not be temperature dependent)                                                                                                                                           |
+| CSAT    | Saturated concentration                                                                                                                                                                              |
+| CTEX    | Instantaneous coefficients of thermal expansion (also CTEY, CTEZ)                                                                                                                                    |
+| CVH     | Heat coefficient at constant volume per unit of mass                                                                                                                                                 |
+| DENS    | Mass density.                                                                                                                                                                                        |
+| DMPR    | Constant structural damping coefficient in harmonic analysis **                                                                                                                                      |
+| DXX     | Diffusivity coefficients (also DYY, DZZ)                                                                                                                                                             |
+| EMIS    | Emissivity.                                                                                                                                                                                          |
+| ENTH    | Enthalpy.                                                                                                                                                                                            |
+| EX      | Elastic moduli (also EY, EZ)                                                                                                                                                                         |
+| GXY     | Shear moduli (also GYZ, GXZ)                                                                                                                                                                         |
+| HF      | Convection or film coefficient                                                                                                                                                                       |
+| KXX     | Thermal conductivities (also KYY, KZZ)                                                                                                                                                               |
+| LSST    | Electric loss tangent                                                                                                                                                                                |
+| LSSM    | Magnetic loss tangent                                                                                                                                                                                |
+| MGXX    | Magnetic coercive forces (also MGYY, MGZZ)                                                                                                                                                           |
+| MURX    | Magnetic relative permeabilities (also MURY, MURZ)                                                                                                                                                   |
+| MU      | Coefficient of friction                                                                                                                                                                              |
+| NUXY    | Minor Poisson's ratios (also NUYZ, NUXZ) (NUXY = νyx, as described in Stress-Strain Relationships in the Mechanical APDL Theory Reference)                                                           |
+| PERX    | Electric relative permittivities (also PERY, PERZ) ***                                                                                                                                               |
+| PRXY    | Major Poisson's ratios (also PRYZ, PRXZ) (PRXY = νxy, as described in Stress-Strain Relationships in the Mechanical APDL Theory Reference)                                                           |
+| QRATE   | Heat generation rate for thermal mass element MASS71. Fraction of plastic work converted to heat (Taylor-Quinney coefficient) for coupled-field elements PLANE222, PLANE223, SOLID226, and SOLID227. |
+| REFT    | Reference temperature. Must be defined as a constant; C1 through C4 are ignored.                                                                                                                     |
+| RH      | Hall Coefficient.                                                                                                                                                                                    |
+| RSVX    | Electrical resistivities (also RSVY, RSVZ).                                                                                                                                                          |
+| SBKX    | Seebeck coefficients (also SBKY, SBKZ).                                                                                                                                                              |
+| SONC    | Sonic velocity.                                                                                                                                                                                      |
+| THSX    | Thermal strain (also THSY, THSZ).                                                                                                                                                                    |
+| VISC    | Viscosity.                                                                                                                                                                                           |
+
+
+~*~: If used in an explicit dynamic analysis, the value
+corresponds to the percentage of damping in the high frequency
+domain. For example, 0.1 roughly corresponds to 10% damping in the
+high frequency domain.
+~**~: (full and QRDAMP mode-superposition). Damping ratio in
+non-QRDAMP mode-superposition analysis. As a constant structural
+damping coefficient, it is also supported in transient analyses (full
+and QRDAMP mode-superposition) when an average excitation frequency is
+specified (DMPSFreq on TRNOPT). 
+~***~: If you enter permittivity values less than 1 for SOLID5,
+PLANE13, or SOLID98, the program interprets the values as absolute
+permittivity. Values input for PLANE223, SOLID226, or SOLID227 are
+always interpreted as relative permittivity. 
