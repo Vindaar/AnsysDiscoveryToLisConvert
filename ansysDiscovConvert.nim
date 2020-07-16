@@ -1,4 +1,4 @@
-import strscans, strutils, streams, os, sequtils, algorithm, parseutils
+import strscans, strutils, streams, os, sequtils, algorithm, parseutils, strformat
 import cligen
 
 ## The node information by default should be contained in the
@@ -32,7 +32,24 @@ func `$`(n: Node): string =
   result.add align(formatFloat(n.pos.y, precision = 11), 20)
   result.add align(formatFloat(n.pos.z, precision = 11), 20)
 
+template toStr(n: Node): string = $n
+
 func `<`(n, m: Node): bool = n.id < m.id
+
+func toStr(e: Element): string =
+  ## stringification as required in ELIST
+  const numPerRow = 8
+  result = &"    {e.id:>4}{e.matId:>4}   1   1   0   1    "
+  var idx = 0
+  let nNodes = e.nodeIds.len
+  while idx < nNodes:
+    for i in idx ..< min(idx + numPerRow, nNodes):
+      result.add alignLeft($e.nodeIds[i], 8)
+    idx += numPerRow
+    if idx < nNodes:
+      result.add "\n" & repeat(' ', 32)
+
+func `<`(n, m: Element): bool = n.id < m.id
 
 template check(f, buf, str: untyped, toRead: static bool = true): untyped =
   when toRead:
@@ -134,6 +151,28 @@ proc parseMeshFile(path: string): MeshFile =
   result.groups = parseElementGroups f
   f.close()
 
+proc writeListFile[T](args: seq[T], outfile: string,
+                      numPerTab: int,
+                      header, tabHeader: string) =
+  template writeTab(f, nIdx, n, num: untyped): untyped =
+    f.write("\n")
+    f.write(tabHeader & "\n")
+    for idx in 0 ..< num:
+      f.write(toStr(n[nIdx + idx]) & "\n")
+
+  var f = open(outfile, fmWrite)
+  f.write(header & "\n")
+  let
+    nFull = args.len div numPerTab
+    nRest = args.len mod numPerTab
+  for i in 0 ..< nFull:
+    writeTab(f, i * numPerTab, args, numPerTab)
+  # write the remaining
+  if nRest > 0:
+    writeTab(f, args.high - nRest, args, nRest)
+
+  f.close()
+
 proc writeNLIST(nodes: seq[Node], outpath: string) =
   ## writes the nodes to the `NLIST.lis` file as expected by garfield
   ##
@@ -145,24 +184,21 @@ proc writeNLIST(nodes: seq[Node], outpath: string) =
   # TODO: find out if it matters whether there is more / less space than the
   # weird `NLIST.lis` (3, 4, 9, 9) spaces...
   let tabHeader = ["NODE", "X", "Y", "Z"].mapIt(it.align(20)).join()
-  template writeTab(f, nIdx, n, num: untyped): untyped =
-    f.write("\n")
-    f.write(tabHeader & "\n")
-    for idx in 0 ..< num:
-      f.write($n[nIdx + idx] & "\n")
+  writeListFile(nodes, outpath / "NLIST.lis", numPerTab, header, tabHeader)
 
-  var f = open(outpath / "NLIST.lis", fmWrite)
-  f.write(header & "\n")
-  let
-    nFull = nodes.len div numPerTab
-    nRest = nodes.len mod numPerTab
-  for i in 0 ..< nFull:
-    writeTab(f, i * numPerTab, nodes, numPerTab)
-  # write the remaining
-  if nRest > 0:
-    writeTab(f, nodes.high - nRest, nodes, nRest)
-
-  f.close()
+proc writeELIST(elements: seq[Element], outpath: string) =
+  ## writes the elements to the `ELIST.lis` file as expected by garfield
+  ##
+  ## file layout:
+  ## - header consists of empty line, one LIST ... line
+  ## - tables: empty line, table header (NODE, X, Y, Z), 10 elements,
+  ##   possibly multiple lines each
+  const numPerTab = 10
+  const nodesPerLine = 8
+  const header = "\n  LIST ALL SELECTED ELEMENTS.  (LIST NODES)"
+  let tabHeader = ["", "ELEM", "MAT", "TYP", "REL", "ESY", "SEC", "", ""]
+    .mapIt(it.align(4)).join() & "NODES\n"
+  writeListFile(elements, outpath / "ELIST.lis", numPerTab, header, tabHeader)
 
 proc main(path: string, outpath = ".") =
   var mesh = parseMeshFile(path)
@@ -170,6 +206,8 @@ proc main(path: string, outpath = ".") =
   mesh.nodes.sort() # sort by id
   writeNLIST(mesh.nodes, outpath)
 
+  let elements = concat(mesh.groups.mapIt(it.elements)).sorted
+  writeELIST(elements, outpath)
 
 when isMainModule:
   dispatch main
