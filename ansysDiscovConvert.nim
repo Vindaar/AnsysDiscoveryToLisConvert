@@ -4,11 +4,14 @@ import cligen
 ## The node information by default should be contained in the
 ## mesh.dat file
 const defaultNodeFile = "mesh.dat"
+const defaultPotentialFile = "potential.csv"
 
 type
   Node = object
     id: int
     pos: tuple[x, y, z: float]
+    volt: float # will be filled with the voltages at each node
+                # after parsing the potential file
 
   Element = object
     id: int
@@ -34,7 +37,18 @@ func `$`(n: Node): string =
 
 template toStr(n: Node): string = $n
 
+func voltStr(n: Node): string =
+  result = &"{n.id:>8}{n.volt:>9.2f}"
+
 func `<`(n, m: Node): bool = n.id < m.id
+
+func almostEqual(x, y: float, eps = 1e-6): bool =
+  abs(x - y) < eps
+
+func checkNode(n: Node, x, y, z: float): bool =
+  result = almostEqual(n.pos.x, x) and
+           almostEqual(n.pos.y, y) and
+           almostEqual(n.pos.z, z)
 
 func toStr(e: Element): string =
   ## stringification as required in ELIST
@@ -151,6 +165,32 @@ proc parseMeshFile(path: string): MeshFile =
   result.groups = parseElementGroups f
   f.close()
 
+proc parsePotentialFile(path: string, nodes: var seq[Node]) =
+  ## parses the file containing the potential values for each node and fills
+  ## the `volt` field of each node.
+  ## The potential.csv file is exported via the user interface of discovery aim.
+  ## Thus, it does not give the node number, but rather the position of the node.
+  ## They however are sorted according to their node number. To see this, compare
+  ## the positions with the node number / position pairs in `mesh.dat` to the
+  ## positions found in this file. Alternatively compile with `-d:checkNodes` to
+  ## perform runtime checks for each row.
+  ##
+  ## NOTE: The input nodes have to be sorted according to their node id!
+  var f = newFileStream(path / defaultPotentialFile)
+  doAssert not f.isNil
+  var
+    buf: string
+    idx: int
+    x, y, z, volt: float
+  check(f, buf, "X [m], Y [m], Z [m], ElectricPotential [kg m^2 A^-1 s^-3]")
+  while f.readLine(buf):
+    doAssert buf.scanf("$f,$s$f,$s$f,$s$f", x, y, z, volt)
+    when defined(checkNodes):
+      doAssert checkNode(nodes[idx], x, y, z)
+      doAssert nodes[idx].id == idx + 1
+    nodes[idx].volt = volt
+    inc idx
+  f.close()
 proc writeListFile[T](args: seq[T], outfile: string,
                       numPerTab: int,
                       header, tabHeader: string) =
@@ -209,5 +249,6 @@ proc main(path: string, outpath = ".") =
   let elements = concat(mesh.groups.mapIt(it.elements)).sorted
   writeELIST(elements, outpath)
 
+  parsePotentialFile(path, mesh.nodes)
 when isMainModule:
   dispatch main
