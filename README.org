@@ -59,16 +59,15 @@ List of different acronyms used in MPLIST to describe materials:
 | VISC    | Viscosity.                                                                                                                                                                                           |
 
 
-~*~: If used in an explicit dynamic analysis, the value
-corresponds to the percentage of damping in the high frequency
-domain. For example, 0.1 roughly corresponds to 10% damping in the
-high frequency domain.
-~**~: (full and QRDAMP mode-superposition). Damping ratio in
-non-QRDAMP mode-superposition analysis. As a constant structural
-damping coefficient, it is also supported in transient analyses (full
-and QRDAMP mode-superposition) when an average excitation frequency is
-specified (DMPSFreq on TRNOPT). 
-~***~: If you enter permittivity values less than 1 for SOLID5,
-PLANE13, or SOLID98, the program interprets the values as absolute
-permittivity. Values input for PLANE223, SOLID226, or SOLID227 are
-always interpreted as relative permittivity. 
+- ~*~: If used in an explicit dynamic analysis, the value corresponds
+  to the percentage of damping in the high frequency domain. For
+  example, 0.1 roughly corresponds to 10% damping in the high frequency domain.
+- ~**~: (full and QRDAMP mode-superposition). Damping ratio in
+  non-QRDAMP mode-superposition analysis. As a constant structural
+  damping coefficient, it is also supported in transient analyses
+  (full and QRDAMP mode-superposition) when an average excitation
+  frequency is specified (DMPSFreq on TRNOPT). 
+- ~***~: If you enter permittivity values less than 1 for SOLID5,
+  PLANE13, or SOLID98, the program interprets the values as absolute 
+  permittivity. Values input for PLANE223, SOLID226, or SOLID227 are
+  always interpreted as relative permittivity.  
