@@ -191,25 +191,31 @@ proc parsePotentialFile(path: string, nodes: var seq[Node]) =
     nodes[idx].volt = volt
     inc idx
   f.close()
+
+proc writeTab[T](f: File, n: seq[T], nIdx: int, num: int,
+                 tabHeader: string,
+                 print: (proc(x: T): string)) =
+  ## should be a local proc in `writeListFile`, but crashes the compiler with
+  ## an intenal error :(
+  f.write("\n")
+  f.write(tabHeader & "\n")
+  for idx in 0 ..< num:
+    f.write(print(n[nIdx + idx]) & "\n")
+
 proc writeListFile[T](args: seq[T], outfile: string,
                       numPerTab: int,
-                      header, tabHeader: string) =
-  template writeTab(f, nIdx, n, num: untyped): untyped =
-    f.write("\n")
-    f.write(tabHeader & "\n")
-    for idx in 0 ..< num:
-      f.write(toStr(n[nIdx + idx]) & "\n")
-
+                      header, tabHeader: string,
+                      print: (proc(x: T): string)) =
   var f = open(outfile, fmWrite)
   f.write(header & "\n")
   let
     nFull = args.len div numPerTab
     nRest = args.len mod numPerTab
   for i in 0 ..< nFull:
-    writeTab(f, i * numPerTab, args, numPerTab)
+    writeTab(f, args, i * numPerTab, numPerTab, tabHeader, print)
   # write the remaining
   if nRest > 0:
-    writeTab(f, args.high - nRest, args, nRest)
+    writeTab(f, args, args.high - nRest, nRest, tabHeader, print)
 
   f.close()
 
@@ -224,7 +230,7 @@ proc writeNLIST(nodes: seq[Node], outpath: string) =
   # TODO: find out if it matters whether there is more / less space than the
   # weird `NLIST.lis` (3, 4, 9, 9) spaces...
   let tabHeader = ["NODE", "X", "Y", "Z"].mapIt(it.align(20)).join()
-  writeListFile(nodes, outpath / "NLIST.lis", numPerTab, header, tabHeader)
+  writeListFile(nodes, outpath / "NLIST.lis", numPerTab, header, tabHeader, toStr)
 
 proc writeELIST(elements: seq[Element], outpath: string) =
   ## writes the elements to the `ELIST.lis` file as expected by garfield
@@ -234,11 +240,30 @@ proc writeELIST(elements: seq[Element], outpath: string) =
   ## - tables: empty line, table header (NODE, X, Y, Z), 10 elements,
   ##   possibly multiple lines each
   const numPerTab = 10
-  const nodesPerLine = 8
   const header = "\n  LIST ALL SELECTED ELEMENTS.  (LIST NODES)"
   let tabHeader = ["", "ELEM", "MAT", "TYP", "REL", "ESY", "SEC", "", ""]
     .mapIt(it.align(4)).join() & "NODES\n"
-  writeListFile(elements, outpath / "ELIST.lis", numPerTab, header, tabHeader)
+  writeListFile(elements, outpath / "ELIST.lis", numPerTab, header, tabHeader, toStr)
+
+proc writePRNSOL(nodes: seq[Node], outpath: string) =
+  ## writes the voltages at each node to the `PRNSOL.lis` file as expected by
+  ## garfield.
+  ##
+  ## file layout:
+  ## - header: consists of empty line, one PRINT ... line
+  ## - tables: multi (6, 4 with text) line table header, 39 nodes in each
+  const numPerTab = 39
+  const header = "\n PRINT VOLT NODAL SOLUTION PER NODE"
+  let tabHeader = """
+
+  ***** POST1 NODAL DEGREE OF FREEDOM LISTING *****
+
+  LOAD STEP=     1  SUBSTEP=     1
+   TIME=    1.0000      LOAD CASE=   0
+
+    NODE       VOLT
+"""
+  writeListFile(nodes, outpath / "PRNSOL.lis", numPerTab, header, tabHeader, voltStr)
 
 proc main(path: string, outpath = ".") =
   var mesh = parseMeshFile(path)
@@ -250,5 +275,7 @@ proc main(path: string, outpath = ".") =
   writeELIST(elements, outpath)
 
   parsePotentialFile(path, mesh.nodes)
+  writePRNSOL(mesh.nodes, outpath)
+
 when isMainModule:
   dispatch main
