@@ -29,11 +29,16 @@ type
     groups: seq[ElementGroup]
 
 func `$`(n: Node): string =
+  ## brings a node into the string representation required for
+  ## NLIST.lis
+  ##
+  ## The input from Discovery Aim uses `m` for the coordinates, but
+  ## garfield uses `cm`, so convert.
   result = newStringOfCap(80)
   result.add align($n.id, 20)
-  result.add align(formatFloat(n.pos.x, precision = 11), 20)
-  result.add align(formatFloat(n.pos.y, precision = 11), 20)
-  result.add align(formatFloat(n.pos.z, precision = 11), 20)
+  result.add align(formatFloat(n.pos.x * 100.0, precision = 11), 20)
+  result.add align(formatFloat(n.pos.y * 100.0, precision = 11), 20)
+  result.add align(formatFloat(n.pos.z * 100.0, precision = 11), 20)
 
 func toStr(n: Node): string = $n
 
