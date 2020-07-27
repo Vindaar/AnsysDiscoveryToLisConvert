@@ -70,6 +70,13 @@ func toStr(e: Element): string =
 
 func `<`(n, m: Element): bool = n.id < m.id
 
+func toContinue[T: Element | Node](s: seq[T], idx: int): bool =
+  when T is Node:
+    result = idx < s.high
+  else:
+    doAssert idx > 0
+    result = idx < s.high and s[idx - 1].matId == s[idx].matId
+
 template check(f, buf, str: untyped, toRead: static bool = true): untyped =
   when toRead:
     doAssert f.readLine(buf)
@@ -201,23 +208,22 @@ proc writeListFile[T](args: seq[T], outfile: string,
                       numPerTab: int,
                       header, tabHeader: string,
                       print: (proc(x: T): string)) =
-  template writeTab(f: File, n, nIdx, num: untyped): untyped =
+  template writeTab(f: File, n, idx: untyped): untyped =
+    var cnt = 0
     f.write("\n")
     f.write(tabHeader & "\n")
-    for idx in 0 ..< num:
-      f.write(print(n[nIdx + idx]) & "\n")
+    for j in 0 ..< numPerTab:
+      if j > 0 and not toContinue(args, idx + cnt):
+        break
+      f.write(print(n[idx + cnt]) & "\n")
+      inc cnt
+    cnt
 
   var f = open(outfile, fmWrite)
   f.write(header & "\n")
-  let
-    nFull = args.len div numPerTab
-    nRest = args.len mod numPerTab
-  for i in 0 ..< nFull:
-    writeTab(f, args, i * numPerTab, numPerTab)
-  # write the remaining
-  if nRest > 0:
-    writeTab(f, args, args.high - nRest, nRest)
-
+  var idx = 0
+  while idx < args.len:
+    idx += writeTab(f, args, idx)
   f.close()
 
 proc writeNLIST(nodes: seq[Node], outpath: string) =
