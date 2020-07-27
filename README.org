@@ -25,6 +25,124 @@ The final file:
 - MPLIST.lis: list of used materials
 currently has to be generated manually.
 
+** Things to keep in mind
+
+- the meshing created by ANSYS Discovery Aim must not use the SOLID122
+  geometry, which is a 20 node element. Garfield can only deal with up
+  to 10 node elements, see:
+  - https://www.mm.bme.hu/~gyebro/files/vem/ansys_14_element_reference.pdf#SOLID122
+  - https://gitlab.cern.ch/garfield/garfieldpp/-/blob/master/Source/ComponentAnsys123.cc#L308-334
+  - slide 23: https://indico.cern.ch/event/258852/contributions/1589835/attachments/456028/632040/zaragoza.pdf
+- the material ids founde in the mesh.dat file (sometimes?) don't
+  start at 1. I don't know whether that has a reason or not, but we
+  have to subtract the minimum so that they do start at 1. Otherwise
+  Garfield is confused.
+- check the following two files to create the MPLIST.lis file:
+  - [[<ProjectName>/session_files/journal1.wbjn]]: get the actual
+    assignments of the different materials from this file, look for
+    the parts like this:
+    #+BEGIN_SRC 
+        materialAssignment1 = study1.CreateEntity(
+        Type="MaterialAssignment",
+        Association=physicsDefinition1)
+    material1 = study1.CreateEntity(
+        Type="Material",
+        Association=physicsDefinition1)
+    material1.ImportEngineeringData(Name="Air")
+    materialAssignment1.Material = material1
+    materialAssignment1.Location = ["BODY1"]
+    materialAssignment2 = study1.CreateEntity(
+        Type="MaterialAssignment",
+        Association=physicsDefinition1)
+    material2 = study1.CreateEntity(
+        Type="Material",
+        Association=physicsDefinition1)
+    material2.ImportEngineeringData(Name="Teflon (tm)")
+    materialAssignment2.Material = material2
+    materialAssignment2.Location = ["BODY2", "BODY9"]
+    # ... and so on
+    #+END_SRC
+    Here we see that material 1 is air, material 2 is teflon etc.
+  - [[<ProjectName>/report_files/dp0/Study/AIM/report.xml]]: This XML file
+    contains all physical properties for each material. The
+    interesting parts for the MPLIST file are found in sections like
+    this:
+    #+BEGIN_SRC xml
+    <section name="Air">
+      <table name="" showHeaders="true" collapsible="true" nameHasEncoding="false">
+        <column name="Property" id="Property" />
+        <column name="Value" id="Value" />
+        <row><value showRawHtml="true">Molar mass</value><value showRawHtml="true">28,965 [kg kmol^-1]</value></row>
+      </table>
+      <table name="Liquid Properties" showHeaders="true" collapsible="true" nameHasEncoding="false">
+        <column name="Property" id="Property" />
+        <column name="Value" id="Value" />
+        <row><value showRawHtml="true">Density, &#x3c1;</value><value showRawHtml="true">875,2 [kg m^-3]</value></row>
+        <row><value showRawHtml="true">Specific heat, c<sub>p</sub></value><value showRawHtml="true">1932,9 [J kg^-1 C^-1]</value></row>
+        <row><value showRawHtml="true">Viscosity, &#x3bc;</value><value showRawHtml="true">0,00016668 [Pa s]</value></row>
+        <row><value showRawHtml="true">Isotropic thermal conductivity, k</value><value showRawHtml="true">0,13999 [W m^-1 C^-1]</value></row>
+      </table>
+      <table name="Gas Properties" showHeaders="true" collapsible="true" nameHasEncoding="false">
+        <column name="Property" id="Property" />
+        <column name="Value" id="Value" />
+        <row><value showRawHtml="true">Density, &#x3c1;</value><value showRawHtml="true">1,1843 [kg m^-3]</value></row>
+        <row><value showRawHtml="true">Specific heat, c<sub>p</sub></value><value showRawHtml="true">1006,3 [J kg^-1 C^-1]</value></row>
+        <row><value showRawHtml="true">Viscosity, &#x3bc;</value><value showRawHtml="true">1,8448E-05 [Pa s]</value></row>
+        <row><value showRawHtml="true">Isotropic thermal conductivity, k</value><value showRawHtml="true">0,026247 [W m^-1 C^-1]</value></row>
+        <row><value showRawHtml="true">Isotropic electrical conductivity, &#x3C3;</value><value showRawHtml="true">0 [S m^-1]</value></row>
+        <row><value showRawHtml="true">Isotropic relative permeability, &#x3bc;<sub>r</sub></value><value showRawHtml="true">1.0000004</value></row>
+        <row><value showRawHtml="true">Isotropic relative permittivity, &#x3b5;<sub>r</sub></value><value showRawHtml="true">1.0006</value></row>
+      </table>
+    </section>
+    ... 
+    #+END_SRC
+    where the section name is the same one as found in the journal
+    file mentioned before. 
+  - for the MPLIST file all we need for our electric field based
+    simulionsa are:
+    - RSVX = resistivity, use the inverse of the "Isotropic electrical
+      conductivity" from the XML file above.
+    - PERX = eletric relative permittivity
+    An example file then looks like:
+    #+BEGIN_SRC 
+    
+ LIST MATERIALS        1 TO        5 BY        1
+  PROPERTY= ALL
+
+
+ MATERIAL NUMBER        1
+
+      TEMP        PERX
+                1.0006
+
+ MATERIAL NUMBER        2
+
+      TEMP        PERX
+                2.100000
+
+ MATERIAL NUMBER        3
+
+      TEMP        PERX
+                7.000000
+
+ MATERIAL NUMBER        4
+
+      TEMP        RSVX
+                1.7241E-8
+
+      TEMP        PERX
+                1.000000
+
+  MATERIAL NUMBER        5
+
+      TEMP        RSVX
+                2.68456e-11
+
+      TEMP        PERX
+                10.80000
+    #+END_SRC
+
+
 ** References
 
 List of different acronyms used in MPLIST to describe materials:
