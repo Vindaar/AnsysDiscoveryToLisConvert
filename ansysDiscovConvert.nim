@@ -278,7 +278,11 @@ proc main(path: string, outpath = ".") =
   mesh.nodes.sort() # sort by id
   writeNLIST(mesh.nodes, outpath)
 
-  let elements = concat(mesh.groups.mapIt(it.elements)).sorted
+  var elements = concat(mesh.groups.mapIt(it.elements)).sorted
+  let minMatId = elements.mapIt(it.matId).min
+  for x in mitems(elements):
+    x.matId = x.matId - minMatId + 1
+
   writeELIST(elements, outpath)
 
   parsePotentialFile(path, mesh.nodes)
