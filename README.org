@@ -102,7 +102,7 @@ currently has to be generated manually.
     simulionsa are:
     - RSVX = resistivity, use the inverse of the "Isotropic electrical
       conductivity" from the XML file above.
-    - PERX = eletric relative permittivity
+    - PERX = electric relative permittivity
     An example file then looks like:
     #+BEGIN_SRC 
     
